@@ -44,10 +44,10 @@ def loginIfDoesntExist(update: Update):
     data = read(file_path)
     user_id = str(update.effective_user.id)
 
-    if data.get("chat_ids"):
-        data["chat_ids"].append(update.effective_chat.id)
-    else: 
+    if not data.get("chat_ids"):
         data["chat_ids"] = [update.effective_chat.id]
+    elif update.effective_chat.id not in data["chat_ids"]:
+        data["chat_ids"].append(update.effective_chat.id)
 
     if("users" not in data):
         data["users"] = {}
@@ -119,14 +119,19 @@ async def reset(update: Update):
 
     write(file_path, data)
 
-async def doneJerkedOff(update: Update):
+async def doneJerkedOff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = read(file_path)
     users = data.get("users")
+    chat_ids = data.get("chat_ids")
+
     user_id = str(update.effective_user.id)
 
     users[user_id]['relapsedCount'] += 1
     users[user_id]['notJerking'] = False
     users[user_id]['notJerkingDateTime'] = None
+
+    for chat_id in chat_ids:
+        await context.bot.send_message(chat_id=chat_id,text= rf'<a href="tg://user?id={user_id}">{users[user_id]["full_name"]}</a> обдрочился!', parse_mode="HTML")
 
     write(file_path, data)
 
@@ -160,7 +165,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             await query.edit_message_text(text=table, parse_mode="HTML", reply_markup=generateReplyMarkup(update))
         
         case "/doneJerkedOff":
-            await doneJerkedOff(update)
+            await doneJerkedOff(update, context)
             table = await statisticsTable()
             await query.edit_message_text(text=table, parse_mode="HTML", reply_markup=generateReplyMarkup(update))
         
