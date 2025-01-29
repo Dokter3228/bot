@@ -64,7 +64,7 @@ async def statisticsTable() -> None:
     statuses_from_users = []
 
     for uid, user_from_storage in users_from_storage.items():
-        user_mention = rf'<a href="tg://user?id={user_from_storage["id"]}">{user_from_storage["full_name"]}</a>'
+        user_mention = rf'<a href="tg://user?id={user_from_storage["id"]}">{user_from_storage["full_name"]}</a>{" (мужчина)" if user_from_storage["notJerking"] else ""}'
         statuses_from_users.append(rf"{user_mention}: хотел дрочить {user_from_storage["wantedCount"]} раз(а), дрочил {user_from_storage["relapsedCount"]}")
     
     statuses_html = "\n".join(statuses_from_users) if statuses_from_users else "Пока нет статистики."
@@ -110,7 +110,7 @@ async def becomeTheMan(update: Update):
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    
+
     match query.data:
         case "/statistics":
             table = await statisticsTable()
