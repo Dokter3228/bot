@@ -2,7 +2,14 @@ import logging
 from read_json import read, write
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters, CallbackQueryHandler
+from telegram.ext import Application, CommandHandler, ContextTypes, CallbackQueryHandler
+
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+TOKEN = os.environ.get("TOKEN")
 
 file_path = 'users.json'
 
@@ -64,7 +71,7 @@ async def statisticsTable() -> None:
     statuses_from_users = []
 
     for uid, user_from_storage in users_from_storage.items():
-        user_mention = rf'<a href="tg://user?id={user_from_storage["id"]}">{user_from_storage["full_name"]}</a>'
+        user_mention = rf'<a href="tg://user?id={user_from_storage["id"]}">{user_from_storage["full_name"]}</a>{" (мужчина)" if user_from_storage["notJerking"] else ""}'
         statuses_from_users.append(rf"{user_mention}: хотел дрочить {user_from_storage["wantedCount"]} раз(а), дрочил {user_from_storage["relapsedCount"]}")
     
     statuses_html = "\n".join(statuses_from_users) if statuses_from_users else "Пока нет статистики."
@@ -110,7 +117,7 @@ async def becomeTheMan(update: Update):
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    
+
     match query.data:
         case "/statistics":
             table = await statisticsTable()
@@ -138,7 +145,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 def main() -> None:
-    application = Application.builder().token("7876823433:AAHsS_vLaoisMWilukDJbooqiq7VNDBboyE").build()
+    application = Application.builder().token(TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
 
