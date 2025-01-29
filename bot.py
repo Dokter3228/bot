@@ -12,7 +12,7 @@ load_dotenv()
 
 TOKEN = os.environ.get("TOKEN")
 
-file_path = 'users.json'
+file_path = 'data.json'
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -25,8 +25,9 @@ def getCurrentTime():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 def generateReplyMarkup(update: Update):
-    user_info = read(file_path)[str(update.effective_user.id)]
-    if(user_info["notJerking"] == True):
+    user = read(file_path)["users"][str(update.effective_user.id)]
+
+    if(user["notJerking"] == True):
         return InlineKeyboardMarkup(
         [
            [InlineKeyboardButton("обдрочился", callback_data="/doneJerkedOff"),  InlineKeyboardButton("хочу дрочить", callback_data="/wannaJerkOff")],
@@ -39,30 +40,40 @@ def generateReplyMarkup(update: Update):
            [InlineKeyboardButton("сбросить", callback_data="/reset"), InlineKeyboardButton("обновить статистику", callback_data="/statistics")]
         ])
 
-async def loginIfDoesntExist(update: Update):
-    user_info = read(file_path)
+def loginIfDoesntExist(update: Update):
+    data = read(file_path)
     user_id = str(update.effective_user.id)
 
-    if(user_id not in user_info):
-        user_info[user_id] = {}
-        user_info[user_id]['username'] = update.effective_user.username
-        user_info[user_id]['full_name'] = update.effective_user.full_name
-        user_info[user_id]['first_name'] = update.effective_user.first_name
-        user_info[user_id]['last_name'] = update.effective_user.last_name
-        user_info[user_id]['name'] = update.effective_user.name
-        user_info[user_id]['id'] = update.effective_user.id
-        user_info[user_id]['wantedCount'] = 0
-        user_info[user_id]['relapsedCount'] = 0
-        user_info[user_id]['notJerking'] = False
+    if data.get("chat_ids"):
+        data["chat_ids"].append(update.effective_chat.id)
+    else: 
+        data["chat_ids"] = [update.effective_chat.id]
 
-        write(file_path, user_info)
+    if("users" not in data):
+        data["users"] = {}
+
+    users = data.get("users")
+
+    if(user_id not in data["users"]):
+        users[user_id] = {}
+        users[user_id]['username'] = update.effective_user.username
+        users[user_id]['full_name'] = update.effective_user.full_name
+        users[user_id]['first_name'] = update.effective_user.first_name
+        users[user_id]['last_name'] = update.effective_user.last_name
+        users[user_id]['name'] = update.effective_user.name
+        users[user_id]['id'] = update.effective_user.id
+        users[user_id]['wantedCount'] = 0
+        users[user_id]['relapsedCount'] = 0
+        users[user_id]['notJerking'] = False
+
+    write(file_path, data)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
 
     await update.message.reply_html(rf"Привет {user.mention_html()}! Я запрещаю тебе дрочить.")
 
-    await loginIfDoesntExist(update)
+    loginIfDoesntExist(update)
     await update.effective_message.delete()
 
     table = await statisticsTable()
@@ -70,12 +81,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_html(text=table, reply_markup=generateReplyMarkup(update))
 
 async def statisticsTable() -> None:
-    users_from_storage = read(file_path)
+    data = read(file_path)
 
     statuses_from_users = []
 
-    for uid, user_from_storage in users_from_storage.items():
-        timeOfTry = datetime.strptime(user_from_storage["notJerkingDateTime"], "%Y-%m-%d %H:%M:%S") if user_from_storage.get("notJerkingDateTime") else ""
+    for uid, user_from_storage in data["users"].items():
+        timeOfTry = datetime.strptime(user_from_storage["notJerkingDateTime"], "%Y-%m-%d %H:%M:%S") if user_from_storage.get("notJerkingDateTime") else None
         timePassedFromBecomingTheMan = (datetime.now() - timeOfTry).days if timeOfTry else ""
 
         theMan = f" (мужчина {timePassedFromBecomingTheMan if timePassedFromBecomingTheMan else "0" } дн)" if user_from_storage["notJerking"] else ""
@@ -89,41 +100,45 @@ async def statisticsTable() -> None:
 
 
 async def wannaJerkOff(update: Update) -> None:
-    user_info = read(file_path)
+    data = read(file_path)
+    users = data.get("users")
     user_id = str(update.effective_user.id)
 
-    user_info[user_id]['wantedCount'] += 1
+    users[user_id]['wantedCount'] += 1
 
-    write(file_path, user_info)
+    write(file_path, data)
 
 async def reset(update: Update):
-    user_info = read(file_path)
+    data = read(file_path)
+    users = data.get("users")
     user_id = str(update.effective_user.id)
 
-    user_info[user_id]['wantedCount'] = 0
-    user_info[user_id]['relapsedCount'] = 0
-    user_info[user_id]['notJerking'] = False
+    users[user_id]['wantedCount'] = 0
+    users[user_id]['relapsedCount'] = 0
+    users[user_id]['notJerking'] = False
 
-    write(file_path, user_info)
+    write(file_path, data)
 
 async def doneJerkedOff(update: Update):
-    user_info = read(file_path)
+    data = read(file_path)
+    users = data.get("users")
     user_id = str(update.effective_user.id)
 
-    user_info[user_id]['relapsedCount'] += 1
-    user_info[user_id]['notJerking'] = False
-    user_info[user_id]['notJerkingDateTime'] = None
+    users[user_id]['relapsedCount'] += 1
+    users[user_id]['notJerking'] = False
+    users[user_id]['notJerkingDateTime'] = None
 
-    write(file_path, user_info)
+    write(file_path, data)
 
 async def becomeTheMan(update: Update):
-    user_info = read(file_path)
+    data = read(file_path)
+    users = data.get("users")
     user_id = str(update.effective_user.id)
 
-    user_info[user_id]['notJerking'] = True
-    user_info[user_id]['notJerkingDateTime'] = getCurrentTime()
+    users[user_id]['notJerking'] = True
+    users[user_id]['notJerkingDateTime'] = getCurrentTime()
 
-    write(file_path, user_info)
+    write(file_path, data)
 
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
