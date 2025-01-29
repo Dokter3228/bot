@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from read_json import read, write
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -19,6 +20,9 @@ logging.basicConfig(
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
+
+def getCurrentTime():
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 def generateReplyMarkup(update: Update):
     user_info = read(file_path)[str(update.effective_user.id)]
@@ -71,7 +75,12 @@ async def statisticsTable() -> None:
     statuses_from_users = []
 
     for uid, user_from_storage in users_from_storage.items():
-        user_mention = rf'<a href="tg://user?id={user_from_storage["id"]}">{user_from_storage["full_name"]}</a>{" (мужчина)" if user_from_storage["notJerking"] else ""}'
+        timeOfTry = datetime.strptime(user_from_storage["notJerkingDateTime"], "%Y-%m-%d %H:%M:%S") if user_from_storage.get("notJerkingDateTime") else ""
+        timePassedFromBecomingTheMan = (datetime.now() - timeOfTry).days if timeOfTry else ""
+
+        theMan = f" (мужчина {timePassedFromBecomingTheMan if timePassedFromBecomingTheMan else "0" } дн)" if user_from_storage["notJerking"] else ""
+
+        user_mention = rf'<a href="tg://user?id={user_from_storage["id"]}">{user_from_storage["full_name"]}</a>{theMan}'
         statuses_from_users.append(rf"{user_mention}: хотел дрочить {user_from_storage["wantedCount"]} раз(а), дрочил {user_from_storage["relapsedCount"]}")
     
     statuses_html = "\n".join(statuses_from_users) if statuses_from_users else "Пока нет статистики."
@@ -103,6 +112,7 @@ async def doneJerkedOff(update: Update):
 
     user_info[user_id]['relapsedCount'] += 1
     user_info[user_id]['notJerking'] = False
+    user_info[user_id]['notJerkingDateTime'] = None
 
     write(file_path, user_info)
 
@@ -111,6 +121,7 @@ async def becomeTheMan(update: Update):
     user_id = str(update.effective_user.id)
 
     user_info[user_id]['notJerking'] = True
+    user_info[user_id]['notJerkingDateTime'] = getCurrentTime()
 
     write(file_path, user_info)
 
