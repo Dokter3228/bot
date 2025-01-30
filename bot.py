@@ -4,6 +4,7 @@ from read_json import read, write
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, ContextTypes, CallbackQueryHandler
+from telegram.error import Forbidden
 
 import os
 from dotenv import load_dotenv
@@ -130,8 +131,11 @@ async def doneJerkedOff(update: Update, context: ContextTypes.DEFAULT_TYPE):
     users[user_id]['notJerking'] = False
     users[user_id]['notJerkingDateTime'] = None
 
-    for chat_id in chat_ids:
-        await context.bot.send_message(chat_id=chat_id,text= rf'<a href="tg://user?id={user_id}">{users[user_id]["full_name"]}</a> обдрочился!', parse_mode="HTML")
+    try:
+        for chat_id in chat_ids:
+            await context.bot.send_message(chat_id=chat_id,text= rf'<a href="tg://user?id={user_id}">{users[user_id]["full_name"]}</a> обдрочился!', parse_mode="HTML")
+    except Forbidden as e:
+        print(e)
 
     write(file_path, data)
 
